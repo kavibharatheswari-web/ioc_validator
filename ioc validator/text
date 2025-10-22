@@ -1,0 +1,5 @@
+IOC validator - 
+The web tool for the analyze of Iocs like ip, hash, url, domain, files, email, malicious code, powershell commands, extensions, packages.
+Using the open source API keys of free Tools like Virus total, abuseip, viewdns, ipvoid, cisco talos, hybrid analysis, urlquery, zscaler, palo alto, and other tools. Along with AI model for detection and summary recommendation of IOC for zero detection.
+User need to login to account and able to link the api keys of tool for ioc analyze. The result need to be shown in new table viewthreat catogry, score, threat type, severity and button to view the detailed report of tools.(Tool should show the main data's and have the link that taken to the tools page of that ioc if detailed investigation needed)
+The ioc need to upload as file and text. The result should be able to view as table and can be download as pdf, with the date and time of analyze. The ai model should summarize and give recommendation of the analyze possible for zero day detection. use free AI model like hugging face model. and add some other free tools for analyze. THE api key need to be enter by user if it really needed.

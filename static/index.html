@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IOC Validator - Threat Intelligence Platform</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar" id="mainNavbar" style="display: none;">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                    <path d="M16 2L4 8V14C4 21.5 9 28 16 30C23 28 28 21.5 28 14V8L16 2Z" fill="#3498db" stroke="#2c3e50" stroke-width="2"/>
+                    <path d="M16 10L12 14L14 16L16 14L20 18L22 16L16 10Z" fill="white"/>
+                </svg>
+                <span>IOC Validator</span>
+            </div>
+            <div class="nav-menu" id="navMenu">
+                <a href="#" class="nav-link" onclick="event.preventDefault(); showSection('dashboard')">Dashboard</a>
+                <a href="#" class="nav-link" onclick="event.preventDefault(); showSection('analyze')">Analyze</a>
+                <a href="#" class="nav-link" onclick="event.preventDefault(); showSection('history')">History</a>
+                <a href="#" class="nav-link" onclick="event.preventDefault(); showSection('settings')">Settings</a>
+                <button class="btn btn-secondary" id="darkModeBtn" onclick="toggleDarkMode()">🌙 Dark Mode</button>
+                <button class="btn btn-secondary" onclick="logout()">Logout</button>
+            </div>
+        </div>
+    </nav>
+    
+    <!-- Dark Mode Toggle for Auth Page -->
+    <div id="authDarkModeToggle" style="position: fixed; top: 20px; right: 20px; z-index: 1000;">
+        <button class="btn btn-secondary" onclick="toggleDarkMode()">🌙 Dark Mode</button>
+    </div>
+
+    <!-- Auth Section -->
+    <div id="authSection" class="auth-container">
+        <div class="auth-card">
+            <div class="auth-header">
+                <svg width="64" height="64" viewBox="0 0 32 32" fill="none">
+                    <path d="M16 2L4 8V14C4 21.5 9 28 16 30C23 28 28 21.5 28 14V8L16 2Z" fill="#3498db" stroke="#2c3e50" stroke-width="2"/>
+                    <path d="M16 10L12 14L14 16L16 14L20 18L22 16L16 10Z" fill="white"/>
+                </svg>
+                <h1>IOC Validator</h1>
+                <p>Advanced Threat Intelligence Platform</p>
+            </div>
+
+            <!-- Login Form -->
+            <div id="loginForm" class="auth-form">
+                <h2>Login</h2>
+                <form onsubmit="login(event)">
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" id="loginEmail" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" id="loginPassword" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block">Login</button>
+                </form>
+                <p class="auth-switch">
+                    Don't have an account? <a href="#" onclick="event.preventDefault(); showRegister()">Register</a><br>
+                    <a href="#" onclick="event.preventDefault(); showForgotPassword()" style="font-size: 0.9em; color: #3498db;">Forgot Password?</a>
+                </p>
+            </div>
+
+            <!-- Forgot Password Form -->
+            <div id="forgotPasswordForm" class="auth-form" style="display: none;">
+                <h2>Forgot Password</h2>
+                <p style="color: #7f8c8d; font-size: 0.9em; margin-bottom: 1rem;">Enter your email address and we'll send you password recovery instructions.</p>
+                <form onsubmit="forgotPassword(event)">
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" id="forgotEmail" required placeholder="Enter your registered email">
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block">Send Recovery Email</button>
+                </form>
+                <p class="auth-switch">Remember your password? <a href="#" onclick="event.preventDefault(); showLogin()">Login</a></p>
+            </div>
+
+            <!-- Register Form -->
+            <div id="registerForm" class="auth-form" style="display: none;">
+                <h2>Register</h2>
+                <form onsubmit="register(event)">
+                    <div class="form-group">
+                        <label>Username</label>
+                        <input type="text" id="registerUsername" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" id="registerEmail" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" id="registerPassword" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block">Register</button>
+                </form>
+                <p class="auth-switch">Already have an account? <a href="#" onclick="event.preventDefault(); showLogin()">Login</a></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main App Section -->
+    <div id="appSection" style="display: none;">
+        <!-- Dashboard -->
+        <section id="dashboard" class="section active">
+            <div class="container">
+                <h1>Dashboard</h1>
+                <div class="stats-grid">
+                    <div class="stat-card clickable" onclick="showSeverityPopup('Critical')" title="Click to view Critical IOCs">
+                        <div class="stat-icon" style="background: #e74c3c;">🔴</div>
+                        <div class="stat-content">
+                            <h3 id="criticalCount">0</h3>
+                            <p>Critical (24h)</p>
+                        </div>
+                    </div>
+                    <div class="stat-card clickable" onclick="showSeverityPopup('High')" title="Click to view High IOCs">
+                        <div class="stat-icon" style="background: #f39c12;">⚠️</div>
+                        <div class="stat-content">
+                            <h3 id="highCount">0</h3>
+                            <p>High (24h)</p>
+                        </div>
+                    </div>
+                    <div class="stat-card clickable" onclick="showSeverityPopup('Medium')" title="Click to view Medium IOCs">
+                        <div class="stat-icon" style="background: #3498db;">📊</div>
+                        <div class="stat-content">
+                            <h3 id="mediumCount">0</h3>
+                            <p>Medium (24h)</p>
+                        </div>
+                    </div>
+                    <div class="stat-card clickable" onclick="showSeverityPopup('Low')" title="Click to view Low IOCs">
+                        <div class="stat-icon" style="background: #95a5a6;">📉</div>
+                        <div class="stat-content">
+                            <h3 id="lowCount">0</h3>
+                            <p>Low (24h)</p>
+                        </div>
+                    </div>
+                    <div class="stat-card clickable" onclick="showSeverityPopup('Info')" title="Click to view Clean IOCs">
+                        <div class="stat-icon" style="background: #2ecc71;">✓</div>
+                        <div class="stat-content">
+                            <h3 id="cleanCount">0</h3>
+                            <p>Clean (24h)</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="recent-analyses">
+                    <h2>Top 20 IOCs by Severity (High to Low)</h2>
+                    <div id="recentAnalyses"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Analyze Section -->
+        <section id="analyze" class="section">
+            <div class="container">
+                <h1>Analyze IOCs</h1>
+                
+                <div class="analyze-card">
+                    <div class="tabs">
+                        <button class="tab active" onclick="switchTab('text', event)">Text Input</button>
+                        <button class="tab" onclick="switchTab('file', event)">File Upload</button>
+                    </div>
+
+                    <div id="textTab" class="tab-content active">
+                        <form onsubmit="analyzeText(event)">
+                            <div class="form-group">
+                                <label>Enter IOCs (one per line)</label>
+                                <textarea id="iocText" rows="10" placeholder="Enter IPs, domains, URLs, hashes, emails, or PowerShell commands...&#10;Example:&#10;192.168.1.1&#10;malicious-domain.com&#10;http://suspicious-url.com&#10;5d41402abc4b2a76b9719d911017c592"></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-primary" id="analyzeBtn">
+                                <span>Analyze</span>
+                            </button>
+                        </form>
+                    </div>
+
+                    <div id="fileTab" class="tab-content">
+                        <form onsubmit="analyzeFile(event)">
+                            <div class="form-group">
+                                <label>Upload IOC File</label>
+                                <div class="file-upload">
+                                    <input type="file" id="iocFile" accept=".txt,.csv">
+                                    <label for="iocFile" class="file-label">
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                            <polyline points="17 8 12 3 7 8"></polyline>
+                                            <line x1="12" y1="3" x2="12" y2="15"></line>
+                                        </svg>
+                                        <span>Choose File</span>
+                                    </label>
+                                    <span id="fileName"></span>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Analyze File</button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Results Section -->
+                <div id="resultsSection" style="display: none;">
+                    <div class="results-header">
+                        <h2>Analysis Results</h2>
+                        <button class="btn btn-secondary" onclick="exportPDF()">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="7 10 12 15 17 10"></polyline>
+                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                            </svg>
+                            Export PDF
+                        </button>
+                    </div>
+                    <div class="table-container">
+                        <table id="resultsTable">
+                            <thead>
+                                <tr>
+                                    <th>IOC</th>
+                                    <th>Type</th>
+                                    <th>Threat Score</th>
+                                    <th>Severity</th>
+                                    <th>Category</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="resultsBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- History Section -->
+        <section id="history" class="section">
+            <div class="container">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                    <h1>Analysis History</h1>
+                    <div style="display: flex; gap: 1rem;">
+                        <button class="btn btn-secondary" onclick="exportHistoryCSV()">
+                            📊 Export CSV
+                        </button>
+                        <button class="btn btn-secondary" onclick="toggleDarkMode()">
+                            🌙 Dark Mode
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Search and Filter -->
+                <div class="analyze-card" style="margin-bottom: 1.5rem;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 1rem; align-items: end;">
+                        <div class="form-group">
+                            <label>🔍 Search IOC</label>
+                            <input type="text" id="searchIOC" placeholder="Search by IOC..." oninput="filterHistory()">
+                        </div>
+                        <div class="form-group">
+                            <label>🎯 Filter by Severity</label>
+                            <select id="filterSeverity" onchange="filterHistory()">
+                                <option value="">All Severities</option>
+                                <option value="Critical">Critical</option>
+                                <option value="High">High</option>
+                                <option value="Medium">Medium</option>
+                                <option value="Low">Low</option>
+                                <option value="Info">Info/Clean</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>📋 Filter by Type</label>
+                            <select id="filterType" onchange="filterHistory()">
+                                <option value="">All Types</option>
+                                <option value="ip">IP Address</option>
+                                <option value="domain">Domain</option>
+                                <option value="url">URL</option>
+                                <option value="md5">MD5</option>
+                                <option value="sha1">SHA1</option>
+                                <option value="sha256">SHA256</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-primary" onclick="clearFilters()">Clear Filters</button>
+                    </div>
+                </div>
+                
+                <div class="table-container">
+                    <table id="historyTable">
+                        <thead>
+                            <tr>
+                                <th>IOC</th>
+                                <th>Type</th>
+                                <th>Threat Score</th>
+                                <th>Severity</th>
+                                <th>Category</th>
+                                <th>Date</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historyBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- Settings Section -->
+        <section id="settings" class="section">
+            <div class="container">
+                <h1>Settings</h1>
+                
+                <!-- History Retention Setting -->
+                <div class="settings-card" style="margin-bottom: 2rem;">
+                    <h2>📅 History Retention</h2>
+                    <p class="help-text">Configure how long to keep IOC analysis history. Data older than the selected period will be automatically deleted.</p>
+                    
+                    <div style="margin-top: 1.5rem;">
+                        <div class="form-group">
+                            <label>Retention Period (Weeks)</label>
+                            <select id="retentionWeeks" onchange="updateRetentionSetting()">
+                                <option value="1">1 Week</option>
+                                <option value="2">2 Weeks</option>
+                                <option value="3">3 Weeks</option>
+                                <option value="4">4 Weeks</option>
+                                <option value="5">5 Weeks (Maximum)</option>
+                            </select>
+                        </div>
+                        <p style="color: #7f8c8d; font-size: 0.9rem; margin-top: 0.5rem;">
+                            Current setting: <strong id="currentRetention">1 week</strong>
+                        </p>
+                    </div>
+                </div>
+                
+                <!-- Timezone Setting -->
+                <div class="settings-card" style="margin-bottom: 2rem;">
+                    <h2>🌍 Timezone Settings</h2>
+                    <p class="help-text">Set your timezone to display all dates and times in your local time. This affects all timestamps throughout the application.</p>
+                    
+                    <div style="margin-top: 1.5rem;">
+                        <div class="form-group">
+                            <label>Your Timezone</label>
+                            <select id="timezoneSelect" onchange="updateTimezoneSetting()">
+                                <option value="UTC">UTC (Coordinated Universal Time)</option>
+                                <option value="Asia/Kolkata">IST - India (Asia/Kolkata)</option>
+                                <option value="America/New_York">EST - US Eastern (America/New_York)</option>
+                                <option value="America/Chicago">CST - US Central (America/Chicago)</option>
+                                <option value="America/Denver">MST - US Mountain (America/Denver)</option>
+                                <option value="America/Los_Angeles">PST - US Pacific (America/Los_Angeles)</option>
+                                <option value="Europe/London">GMT - London (Europe/London)</option>
+                                <option value="Europe/Paris">CET - Paris (Europe/Paris)</option>
+                                <option value="Europe/Berlin">CET - Berlin (Europe/Berlin)</option>
+                                <option value="Asia/Dubai">GST - Dubai (Asia/Dubai)</option>
+                                <option value="Asia/Singapore">SGT - Singapore (Asia/Singapore)</option>
+                                <option value="Asia/Tokyo">JST - Tokyo (Asia/Tokyo)</option>
+                                <option value="Asia/Shanghai">CST - Shanghai (Asia/Shanghai)</option>
+                                <option value="Asia/Hong_Kong">HKT - Hong Kong (Asia/Hong_Kong)</option>
+                                <option value="Australia/Sydney">AEDT - Sydney (Australia/Sydney)</option>
+                                <option value="Pacific/Auckland">NZDT - Auckland (Pacific/Auckland)</option>
+                            </select>
+                        </div>
+                        <p style="color: #7f8c8d; font-size: 0.9rem; margin-top: 0.5rem;">
+                            Current timezone: <strong id="currentTimezone">UTC</strong>
+                        </p>
+                        <p style="color: #3498db; font-size: 0.85rem; margin-top: 0.5rem;">
+                            ℹ️ All dates and times will be displayed in your selected timezone
+                        </p>
+                    </div>
+                </div>
+                
+                <!-- API Key Management -->
+                <div class="settings-card">
+                    <h2>🔑 Configure Security Tool APIs</h2>
+                    <p class="help-text">Add your API keys for various security tools to enhance IOC analysis capabilities.</p>
+                    
+                    <div class="api-keys-list" id="apiKeysList"></div>
+
+                    <form onsubmit="addApiKey(event)" class="api-key-form">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Service</label>
+                                <select id="serviceName" required>
+                                    <option value="">Select Service</option>
+                                    <option value="virustotal">VirusTotal</option>
+                                    <option value="abuseipdb">AbuseIPDB</option>
+                                    <option value="ipvoid">IPVoid</option>
+                                    <option value="hybrid_analysis">Hybrid Analysis</option>
+                                    <option value="shodan">Shodan</option>
+                                    <option value="censys">Censys</option>
+                                    <option value="urlquery">URLQuery</option>
+                                    <option value="anyrun">ANY.RUN</option>
+                                    <option value="zscaler_content">Zscaler Content Analyzer</option>
+                                    <option value="zscaler_category">Zscaler Category Analyzer</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>API Key</label>
+                                <input type="password" id="apiKey" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Add Key</button>
+                        </div>
+                    </form>
+
+                    <div class="api-help">
+                        <h3>How to get API Keys:</h3>
+                        <ul>
+                            <li><strong>VirusTotal:</strong> <a href="https://www.virustotal.com/gui/join-us" target="_blank">Sign up here</a></li>
+                            <li><strong>AbuseIPDB:</strong> <a href="https://www.abuseipdb.com/register" target="_blank">Register here</a></li>
+                            <li><strong>Hybrid Analysis:</strong> <a href="https://www.hybrid-analysis.com/signup" target="_blank">Create account</a></li>
+                            <li><strong>URLQuery:</strong> <a href="https://urlquery.net/user/register" target="_blank">Register here</a></li>
+                            <li><strong>ANY.RUN:</strong> <a href="https://any.run/register/" target="_blank">Sign up here</a></li>
+                            <li><strong>Zscaler Content:</strong> <a href="https://www.zscaler.com/products/zscaler-internet-access" target="_blank">Contact Zscaler</a></li>
+                            <li><strong>Zscaler Category:</strong> <a href="https://www.zscaler.com/products/zscaler-internet-access" target="_blank">Contact Zscaler</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Modal for Detailed Report -->
+    <div id="reportModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <div id="modalBody"></div>
+        </div>
+    </div>
+
+    <!-- Modal for Severity IOCs -->
+    <div id="severityModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeSeverityModal()">&times;</span>
+            <div id="severityModalBody"></div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="loader"></div>
+        <p>Analyzing IOCs...</p>
+    </div>
+
+    <script src="app.js?v=2.0.2"></script>
+</body>
+</html>

@@ -1,0 +1,20 @@
+[build]
+  command = "pip install -r requirements.txt && python app.py"
+  publish = "static"
+
+[build.environment]
+  PYTHON_VERSION = "3.9"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[functions]
+  # Include this if you're using Netlify Functions
+  # directory = "functions"
+
+[dev]
+  command = "python app.py"
+  targetPort = 5000
+  publish = "static"

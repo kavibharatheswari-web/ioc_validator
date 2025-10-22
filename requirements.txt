@@ -1,0 +1,15 @@
+Flask==2.3.0
+Flask-CORS==4.0.0
+Flask-Login==0.6.2
+Flask-SQLAlchemy==3.0.5
+Flask-Mail==0.9.1
+PyJWT==2.8.0
+Werkzeug==2.3.0
+requests==2.31.0
+reportlab==4.0.4
+transformers==4.30.0
+torch==2.0.10
+validators>=0.22.0
+cryptography>=41.0.7
+gunicorn>=21.2.0
+python-whois>=0.8.0

@@ -13,7 +13,11 @@ from pdf_generator import generate_pdf_report
 import json
 
 app = Flask(__name__, static_folder='static', static_url_path='')
-app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
+# Use a fixed secret key for development to prevent verification issues on server restart
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-fixed-for-now-12345')
+
+# Log the secret key being used (first 5 chars for security)
+print(f"Using SECRET_KEY: {app.config['SECRET_KEY'][:5]}...")
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///ioc_validator.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
@@ -157,17 +161,28 @@ def register():
 @app.route('/verify/<token>', methods=['GET'])
 def verify_email(token):
     try:
-        payload = jwt.decode(token, app.config['SECRET_KEY'], algorithms=['HS256'])
-        email = payload['email']
+        print(f"Attempting to verify token: {token[:20]}...")  # Log first 20 chars of token
+        print(f"Using SECRET_KEY: {app.config['SECRET_KEY'][:10]}...")  # Log first 10 chars of secret key
         
-        user = User.query.filter_by(email=email, verification_token=token).first()
-        if user:
-            user.is_verified = True
-            user.verification_token = None
-            db.session.commit()
+        try:
+            payload = jwt.decode(
+                token, 
+                app.config['SECRET_KEY'], 
+                algorithms=['HS256'],
+                options={"verify_exp": True}  # Explicitly enable expiration check
+            )
+            email = payload['email']
+            print(f"Successfully decoded token for email: {email}")
             
-            # Return HTML page with success message
-            return '''
+            user = User.query.filter_by(email=email, verification_token=token).first()
+            if user:
+                user.is_verified = True
+                user.verification_token = None
+                db.session.commit()
+                print(f"Successfully verified user: {email}")
+                
+                # Return HTML page with success message
+                return '''
 <html>
 <head>
     <title>Email Verified - IOC Validator</title>
@@ -189,7 +204,52 @@ def verify_email(token):
 </body>
 </html>
 '''
-        else:
+            else:
+                return '''
+<html>
+<head>
+    <title>Verification Failed - IOC Validator</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #f4f4f4; padding: 50px; text-align: center; }
+        .container { max-width: 600px; margin: 0 auto; background: white; padding: 40px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        h1 { color: #e74c3c; }
+        .error { color: #e74c3c; font-size: 48px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="error">✗</div>
+        <h1>Verification Failed</h1>
+        <p>Invalid or expired verification link.</p>
+    </div>
+</body>
+</html>
+'''
+        except jwt.ExpiredSignatureError:
+            print("✗ Token has expired")
+            return '''
+<html>
+<head>
+    <title>Verification Failed - Token Expired</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #f4f4f4; padding: 50px; text-align: center; }
+        .container { max-width: 600px; margin: 0 auto; background: white; padding: 40px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        h1 { color: #e67e22; }
+        .error { color: #e67e22; font-size: 48px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="error">⚠️</div>
+        <h1>Verification Link Expired</h1>
+        <p>This verification link has expired. Please request a new verification email from the login page.</p>
+        <p><a href="/login">Go to Login</a></p>
+    </div>
+</body>
+</html>
+'''
+        except jwt.InvalidTokenError as e:
+            print(f"✗ Invalid token error: {str(e)}")
             return '''
 <html>
 <head>
@@ -210,11 +270,12 @@ def verify_email(token):
 </body>
 </html>
 '''
-    except:
+    except Exception as e:
+        print(f"Unexpected error during email verification: {str(e)}")
         return '''
 <html>
 <head>
-    <title>Verification Failed - IOC Validator</title>
+    <title>Verification Error - IOC Validator</title>
     <style>
         body { font-family: Arial, sans-serif; background: #f4f4f4; padding: 50px; text-align: center; }
         .container { max-width: 600px; margin: 0 auto; background: white; padding: 40px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
@@ -224,9 +285,10 @@ def verify_email(token):
 </head>
 <body>
     <div class="container">
-        <div class="error">✗</div>
-        <h1>Verification Failed</h1>
-        <p>Invalid or expired verification link.</p>
+        <div class="error">⚠️</div>
+        <h1>Verification Error</h1>
+        <p>An unexpected error occurred during verification. Please try again later.</p>
+        <p><a href="/">Return to Home</a></p>
     </div>
 </body>
 </html>
@@ -235,14 +297,23 @@ def verify_email(token):
 @app.route('/api/login', methods=['POST'])
 def login():
     data = request.get_json()
-    user = User.query.filter_by(email=data['email']).first()
+    email = data.get('email')
+    if not email:
+        return jsonify({'error': 'Email is required'}), 400
+        
+    user = User.query.filter_by(email=email).first()
     
     if user and check_password_hash(user.password_hash, data['password']):
+        # Ensure the token is a string, not bytes
         token = jwt.encode({
             'user_id': user.id,
             'exp': datetime.utcnow() + timedelta(days=7)
         }, app.config['SECRET_KEY'], algorithm='HS256')
         
+        # If token is bytes, decode it to string
+        if isinstance(token, bytes):
+            token = token.decode('utf-8')
+            
         return jsonify({
             'token': token,
             'user': {
@@ -456,10 +527,22 @@ def update_timezone_setting():
 # IOC Analysis Routes
 @app.route('/api/analyze', methods=['POST'])
 def analyze_ioc():
-    token = request.headers.get('Authorization', '').replace('Bearer ', '')
+    auth_header = request.headers.get('Authorization', '')
+    if not auth_header.startswith('Bearer '):
+        return jsonify({'error': 'Missing or invalid Authorization header'}), 401
+        
+    token = auth_header.split(' ')[1]
+    
     try:
-        payload = jwt.decode(token, app.config['SECRET_KEY'], algorithms=['HS256'])
-        user_id = payload['user_id']
+        # Verify the token
+        try:
+            payload = jwt.decode(token, app.config['SECRET_KEY'], algorithms=['HS256'])
+            user_id = payload['user_id']
+        except jwt.ExpiredSignatureError:
+            return jsonify({'error': 'Token has expired'}), 401
+        except jwt.InvalidTokenError as e:
+            print(f"Invalid token: {str(e)}")
+            return jsonify({'error': 'Invalid token'}), 401
         
         # Get user's API keys
         api_keys = {key.service_name: key.api_key 

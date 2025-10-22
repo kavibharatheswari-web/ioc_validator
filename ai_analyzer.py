@@ -30,6 +30,21 @@ class AIAnalyzer:
             None to force fallback to rule-based analysis
         """
         return None
+        
+    def analyze(self, ioc, ioc_type, details):
+        """
+        Analyze IOC and provide AI-generated summary and recommendations.
+        
+        Args:
+            ioc: The indicator to analyze
+            ioc_type: Type of the indicator (ip, domain, url, etc.)
+            details: Dictionary containing analysis details
+            
+        Returns:
+            Dictionary containing analysis results with 'summary' and 'recommendation' keys
+        """
+        # This method is a wrapper that calls fallback_analysis
+        return self.fallback_analysis(ioc, ioc_type, details)
     
     def generate_text(self, prompt, max_length=150):
         """Generate text using the AI model"""

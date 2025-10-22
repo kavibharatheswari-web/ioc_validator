@@ -166,6 +166,16 @@ function showSection(sectionId) {
     });
     document.getElementById(sectionId).classList.add('active');
     
+    // Show/hide dark mode toggle based on the current section
+    const darkModeBtn = document.getElementById('darkModeBtn');
+    if (darkModeBtn) {
+        if (sectionId === 'history') {
+            darkModeBtn.style.display = 'none';
+        } else {
+            darkModeBtn.style.display = 'inline-block';
+        }
+    }
+    
     if (sectionId === 'dashboard') {
         loadDashboard();
     } else if (sectionId === 'history') {

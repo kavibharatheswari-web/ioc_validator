@@ -20,5 +20,5 @@ python-whois==0.9.3
 gunicorn==21.2.0
 huggingface-hub==0.19.4
 transformers==4.35.2
-torch==2.1.2
+torch==2.2.0
 tokenizers==0.15.1

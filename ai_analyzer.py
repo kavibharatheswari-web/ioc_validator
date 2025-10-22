@@ -1,75 +1,35 @@
-try:
-    from transformers import pipeline
-    import torch
-    TRANSFORMERS_AVAILABLE = True
-except ImportError:
-    TRANSFORMERS_AVAILABLE = False
-    print("Warning: transformers/torch not installed. Using rule-based analysis only.")
+"""
+AI Analyzer Module
+
+This module provides a simplified analyzer that falls back to rule-based analysis.
+AI features are disabled for Vercel deployment.
+"""
+
+# Disable AI features for Vercel deployment
+TRANSFORMERS_AVAILABLE = False
 
 class AIAnalyzer:
+    """
+    Simplified analyzer that always falls back to rule-based analysis.
+    """
     def __init__(self):
-        """Initialize AI model for threat analysis"""
+        """Initialize the analyzer with AI features disabled."""
+        self.model = None
         self.model_loaded = False
+        print("Info: Using rule-based analysis only (AI features disabled for Vercel deployment)")
+
+    def analyze_ioc(self, ioc, ioc_type):
+        """
+        Analyze an IOC (Indicator of Compromise).
         
-        if not TRANSFORMERS_AVAILABLE:
-            print("Info: AI model disabled - transformers library not available")
-            return
+        Args:
+            ioc: The indicator to analyze
+            ioc_type: Type of the indicator (ip, domain, url, etc.)
             
-        try:
-            # Use a lightweight model for text generation
-            self.model = pipeline(
-                "text-generation",
-                model="distilgpt2",
-                device=0 if torch.cuda.is_available() else -1
-            )
-            self.model_loaded = True
-            print("Info: AI model loaded successfully")
-        except Exception as e:
-            print(f"Warning: Could not load AI model: {e}")
-            self.model_loaded = False
-    
-    def analyze(self, ioc, ioc_type, details):
-        """Analyze IOC and provide AI-generated summary and recommendations"""
-        
-        if not self.model_loaded:
-            return self.fallback_analysis(ioc, ioc_type, details)
-        
-        try:
-            # Create context for AI analysis
-            context = self.create_context(ioc, ioc_type, details)
-            
-            # Generate summary
-            summary_prompt = f"Security Analysis Summary for {ioc_type} '{ioc}':\n{context}\nSummary:"
-            summary = self.generate_text(summary_prompt, max_length=150)
-            
-            # Generate recommendation
-            rec_prompt = f"Security Recommendation for {ioc_type} '{ioc}' with threat indicators:\n{context}\nRecommendation:"
-            recommendation = self.generate_text(rec_prompt, max_length=150)
-            
-            return {
-                'summary': summary,
-                'recommendation': recommendation
-            }
-        except Exception as e:
-            print(f"AI analysis error: {e}")
-            return self.fallback_analysis(ioc, ioc_type, details)
-    
-    def create_context(self, ioc, ioc_type, details):
-        """Create context string from analysis details"""
-        context_parts = []
-        
-        for service, data in details.items():
-            if isinstance(data, dict):
-                if 'malicious' in data:
-                    context_parts.append(f"{service}: {data['malicious']} malicious detections")
-                if 'suspicious' in data:
-                    context_parts.append(f"{service}: {data['suspicious']} suspicious detections")
-                if 'abuse_confidence_score' in data:
-                    context_parts.append(f"{service}: {data['abuse_confidence_score']}% abuse confidence")
-                if 'threat_score' in data:
-                    context_parts.append(f"{service}: threat score {data['threat_score']}")
-        
-        return "; ".join(context_parts[:5])  # Limit context length
+        Returns:
+            None to force fallback to rule-based analysis
+        """
+        return None
     
     def generate_text(self, prompt, max_length=150):
         """Generate text using the AI model"""

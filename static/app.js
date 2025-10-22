@@ -218,48 +218,37 @@ async function loadDashboard() {
         if (response.ok) {
             const analyses = await response.json();
             
-            // Filter last 24 hours data for stats
-            const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-            const last24Hours = analyses.filter(a => new Date(a.analyzed_at) >= twentyFourHoursAgo);
+            // Sort all analyses by date (newest first) - exactly like in loadHistory
+            const sortedAnalyses = [...analyses].sort((a, b) => new Date(b.analyzed_at) - new Date(a.analyzed_at));
             
-            // Remove duplicates from 24h data - keep only most recent per IOC
-            const unique24Hours = [];
-            const seen24hIOCs = new Set();
-            
-            for (const analysis of last24Hours) {
-                if (!seen24hIOCs.has(analysis.ioc)) {
-                    seen24hIOCs.add(analysis.ioc);
-                    unique24Hours.push(analysis);
-                }
-            }
-            
-            // Calculate stats from unique IOCs in last 24 hours
-            const critical = unique24Hours.filter(a => a.severity === 'Critical').length;
-            const high = unique24Hours.filter(a => a.severity === 'High').length;
-            const medium = unique24Hours.filter(a => a.severity === 'Medium').length;
-            const low = unique24Hours.filter(a => a.severity === 'Low').length;
-            const clean = unique24Hours.filter(a => a.severity === 'Info').length;
-            
-            document.getElementById('criticalCount').textContent = critical;
-            document.getElementById('highCount').textContent = high;
-            document.getElementById('mediumCount').textContent = medium;
-            document.getElementById('lowCount').textContent = low;
-            document.getElementById('cleanCount').textContent = clean;
-            
-            // Remove duplicates - keep only most recent per IOC
+            // Get unique IOCs (most recent analysis for each) - same as loadHistory
             const uniqueAnalyses = [];
             const seenIOCs = new Set();
             
-            for (const analysis of analyses) {
+            for (const analysis of sortedAnalyses) {
                 if (!seenIOCs.has(analysis.ioc)) {
                     seenIOCs.add(analysis.ioc);
                     uniqueAnalyses.push(analysis);
                 }
             }
             
+            // Count severities from the unique analyses (no time filter)
+            const critical = uniqueAnalyses.filter(a => a.severity === 'Critical').length;
+            const high = uniqueAnalyses.filter(a => a.severity === 'High').length;
+            const medium = uniqueAnalyses.filter(a => a.severity === 'Medium').length;
+            const low = uniqueAnalyses.filter(a => a.severity === 'Low').length;
+            const clean = uniqueAnalyses.filter(a => a.severity === 'Info').length;
+            
+            // Update the dashboard counts
+            document.getElementById('criticalCount').textContent = critical;
+            document.getElementById('highCount').textContent = high;
+            document.getElementById('mediumCount').textContent = medium;
+            document.getElementById('lowCount').textContent = low;
+            document.getElementById('cleanCount').textContent = clean;
+            
             // Sort by severity (high to low) and get top 20
             const severityOrder = {'Critical': 5, 'High': 4, 'Medium': 3, 'Low': 2, 'Info': 1};
-            const sortedAnalyses = uniqueAnalyses.sort((a, b) => {
+            const topAnalyses = uniqueAnalyses.sort((a, b) => {
                 const severityDiff = severityOrder[b.severity] - severityOrder[a.severity];
                 if (severityDiff !== 0) return severityDiff;
                 // If same severity, sort by threat score
@@ -429,7 +418,10 @@ async function loadHistory() {
         });
         
         if (response.ok) {
-            const analyses = await response.json();
+            let analyses = await response.json();
+            
+            // Sort analyses by analyzed_at in descending order (newest first)
+            analyses.sort((a, b) => new Date(b.analyzed_at) - new Date(a.analyzed_at));
             
             // Remove duplicates - keep only the most recent analysis for each unique IOC
             const uniqueAnalyses = [];

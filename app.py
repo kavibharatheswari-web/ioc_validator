@@ -13,11 +13,15 @@ from pdf_generator import generate_pdf_report
 import json
 
 app = Flask(__name__, static_folder='static', static_url_path='')
-# Use a fixed secret key for development to prevent verification issues on server restart
-app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-fixed-for-now-12345')
+# Set default secret key for development, require in production
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
 
-# Log the secret key being used (first 5 chars for security)
-print(f"Using SECRET_KEY: {app.config['SECRET_KEY'][:5]}...")
+# Log only a secure hash of the secret key for debugging
+import hashlib
+if app.config['SECRET_KEY'] != 'dev-secret-key-change-in-production':
+    app.logger.debug("Using SECRET_KEY hash: %s", hashlib.sha256(app.config['SECRET_KEY'].encode()).hexdigest()[:8])
+else:
+    app.logger.warning("Using default SECRET_KEY. For production, set SECRET_KEY environment variable.")
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///ioc_validator.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
@@ -161,19 +165,26 @@ def register():
 @app.route('/verify/<token>', methods=['GET'])
 def verify_email(token):
     try:
-        print(f"Attempting to verify token: {token[:20]}...")  # Log first 20 chars of token
-        print(f"Using SECRET_KEY: {app.config['SECRET_KEY'][:10]}...")  # Log first 10 chars of secret key
+        app.logger.debug("Processing verification token")
         
         try:
+            # Decode the JWT token
             payload = jwt.decode(
                 token, 
                 app.config['SECRET_KEY'], 
                 algorithms=['HS256'],
-                options={"verify_exp": True}  # Explicitly enable expiration check
+                options={"verify_exp": True}
             )
-            email = payload['email']
-            print(f"Successfully decoded token for email: {email}")
-            
+            email = payload.get('email')
+            if not email:
+                app.logger.warning("Token payload missing email")
+                return '''
+                <html><body>
+                    <h1>Verification Error</h1>
+                    <p>Invalid token payload. Please request a new verification email.</p>
+                </body></html>''', 400
+                
+            app.logger.debug("Processing verification for email: %s", email)
             user = User.query.filter_by(email=email, verification_token=token).first()
             if user:
                 user.is_verified = True
@@ -296,19 +307,20 @@ def verify_email(token):
 
 @app.route('/api/login', methods=['POST'])
 def login():
-    data = request.get_json()
+    data = request.get_json() or {}
     email = data.get('email')
-    if not email:
-        return jsonify({'error': 'Email is required'}), 400
+    password = data.get('password')
+    
+    if not email or not password:
+        return jsonify({'error': 'Email and password are required'}), 400
         
     user = User.query.filter_by(email=email).first()
-    
-    if user and check_password_hash(user.password_hash, data['password']):
+    if user and check_password_hash(user.password_hash, password):
         # Ensure the token is a string, not bytes
         token = jwt.encode({
             'user_id': user.id,
             'exp': datetime.utcnow() + timedelta(days=7)
-        }, app.config['SECRET_KEY'], algorithm='HS256')
+        }, app.config.get('SECRET_KEY'), algorithm='HS256')
         
         # If token is bytes, decode it to string
         if isinstance(token, bytes):
@@ -528,10 +540,10 @@ def update_timezone_setting():
 @app.route('/api/analyze', methods=['POST'])
 def analyze_ioc():
     auth_header = request.headers.get('Authorization', '')
-    if not auth_header.startswith('Bearer '):
+    parts = auth_header.split()
+    if len(parts) != 2 or parts[0].lower() != 'bearer':
         return jsonify({'error': 'Missing or invalid Authorization header'}), 401
-        
-    token = auth_header.split(' ')[1]
+    token = parts[1]
     
     try:
         # Verify the token
